@@ -1,2 +1,2 @@
 # EVIMP2020
-Archivos, materiales y código de la materia Evaluación de Impacto 
+Archivos, materiales y código de Evaluación de Impacto 
