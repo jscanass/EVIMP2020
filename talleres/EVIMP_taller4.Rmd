@@ -1,0 +1,209 @@
+---
+title: "Evaluación de impacto - Taller IV (Parte II)"
+output: html_notebook
+---
+Autor: Juan Sebastián Cañas
+
+Universidad Nacional de Colombia
+
+Noviembre del 2020
+
+
+Notebook con el código necesario para obtener los resultados del [taller IV](https://github.com/fbogliacino/Evaluacion-de-Impacto-/blob/master/Talleres/Taller%20IV.docx) de EVIMP-2020 sobre el artículo [Punishment and Deterrance: Evidence from Drunk Driving](https://www.aeaweb.org/articles?id=10.1257/aer.20130189) de Benjamin Hansen (2015).
+
+Seguimos las instrucciones de la parte II del taller:
+
+Una vez tenga los datos en el programa, use la variable “low_score” (dividida por mil) como indicación del BAC, ejecute los siguientes pasos (note que los resultados no van a coincidir exactamente, no se preocupe por eso):
+
+
+```{r}
+library(tidyverse)
+library(rdrobust)
+library(rddensity)
+library(readstata13)
+library(broom)  
+library(modelsummary) 
+library(rdlocrand)
+```
+
+
+
+```{r}
+dui <- read.dta13("/Users/jscs/Downloads/hansen_dwi.dta")
+dui$BAC <- dui$low_score/1000
+print('Dimensiones de la base de datos completa')
+print(dim(dui))
+```
+
+```{r}
+
+dui_filtered <- filter(dui, BAC > 0.03 & BAC < 0.2)
+print('Dimensiones de la base de datos filtrada para valores de BAC entre 0.03 y 0.2')
+print(dim(dui_filtered))
+```
+
+```{r}
+head(dui_filtered)
+```
+
+
+1. Reproduzca la Fig 1, con un histograma con clases de frecuencia de amplitud 0.0001 y dos líneas verticales en correspondencia de DUI y DUI agravado
+
+```{r}
+ggplot(dui, aes(x = BAC, )) +
+  geom_histogram(binwidth = 0.0001, color = "gray",) + 
+  geom_vline(xintercept = 0.08) + geom_vline(xintercept = 0.15) + 
+  labs(title = "BAC histogram",
+         x = "BAC",
+         y = "Frequency")
+
+```
+
+
+
+2. Conduzca el test de McCrary al nivel del DUI, ploteándolo gráficamente y reportando el p-value
+
+```{r}
+test_density <- rddensity(dui$BAC, c = 0.08)
+summary(test_density)
+```
+
+```{r}
+plot_density_test <- rdplotdensity(rdd = test_density, dui$BAC, type = "both", 
+                                   xlabel = 'BAC', ylabel = 'Frequency (10x^3)',title = 'McCrary Test')
+
+```
+
+
+3. Reproduzca parcialmente la Tabla 2 columnas (1)-(4) , Panel (A), usando el mismo modelo estimado en el artículo;
+
+```{r}
+rdrobust(y = dui_filtered$white, x = dui_filtered$BAC, c=0.08, p=2, h=0.05, kernel = 'uniform' ) %>% 
+  summary()
+```
+
+
+```{r}
+out <- rdplot(y = dui_filtered$white, x = dui_filtered$BAC, c=0.08, support=c(0.05, 0.13), p=1 ,nbins = 0.002, kernel = 'uniform',
+      #  x . lim = c ( -100 , + 100) , y . lim = c (0 , 25)     
+      y.lim = c(0.8,0.9),
+         x.label ='BAC', y.label = 'White' ,title='BAC and Characteristics 1')
+summary(out)
+```
+
+
+
+```{r}
+rdrobust(y = dui_filtered$male, x = dui_filtered$BAC, c=0.08, p=2, h=0.05, kernel = 'uniform' ) %>% 
+  summary()
+```
+
+```{r}
+out <- rdplot(y = dui_filtered$male, x = dui_filtered$BAC, c=0.08, support=c(0.05, 0.13), p=1 ,nbins = 0.002, kernel = 'uniform',
+      #  x . lim = c ( -100 , + 100) , y .lim = c (0 , 25)      
+      y.lim = c(0.74,0.82),
+         x.label ='BAC', y.label = 'Male' ,title='BAC and Characteristics 2')
+summary(out)
+```
+
+
+```{r}
+rdrobust(y = dui_filtered$aged, x = dui_filtered$BAC, c=0.08, p=2, h=0.05, kernel = 'uniform' ) %>% 
+  summary()
+```
+
+
+```{r}
+out <- rdplot(y = dui_filtered$aged, x = dui_filtered$BAC, c=0.08, support=c(0.05, 0.13), p=1 ,nbins = 0.002, kernel = 'uniform',
+      #  x . lim = c ( -100 , + 100) , y . lim = c (0 , 25)   
+         x.label ='BAC', y.label = 'Age' ,title='BAC and Characteristics 3')
+summary(out)
+```
+
+
+```{r}
+rdrobust(y = dui_filtered$acc, x = dui_filtered$BAC, c=0.08, p=2, h=0.05, kernel = 'uniform' ) %>% 
+  summary()
+```
+
+
+```{r}
+out <- rdplot(y = dui_filtered$acc, x = dui_filtered$BAC, c=0.08, support=c(0.05, 0.13), p=1 ,nbins = 0.002, kernel = 'uniform',
+      #  x . lim = c ( -100 , + 100) , y . lim = c (0 , 25)      
+      y.lim = c(0.05,0.25),
+         x.label ='BAC', y.label = 'Accident at scene' ,title='BAC and Characteristics 4')
+summary(out)
+```
+
+
+4. Reproduzca parcialmente la Tabla 3, columna 1, Panel (A) y (B), usando el mismo modelo y ancho de banda (variable=recidivism);
+
+```{r}
+rdrobust(y = dui_filtered$recidivism, x = dui_filtered$BAC, c = 0.08, h=0.05, p=2, 
+         covs = cbind(dui_filtered$white, dui_filtered$male, dui_filtered$aged, dui_filtered$acc),
+         kernel = "uniform") %>% 
+  summary()
+```
+
+
+```{r}
+rdrobust(y = dui_filtered$recidivism, x = dui_filtered$BAC, c = 0.08, h=0.025, p=2, 
+         covs = cbind(dui_filtered$white, dui_filtered$male, dui_filtered$aged, dui_filtered$acc),
+         kernel = "uniform") %>% 
+  summary()
+```
+
+
+
+5. Muestre en una gráfica el outcome sobre la running variable, con cutoff a 0.08 y soporte del BAC entre 0.03 y 0.20, con intervalos de confianza, kernel rectangular.
+
+```{r}
+rdplot(y = dui_filtered$recidivism, x = dui_filtered$BAC, c = 0.08, h=0.05, p=1,
+         covs = dui_filtered[c("white", "male", "aged", "acc")],
+         kernel = "uniform", ci=95, support = c(0.03, 0.2), shade = TRUE,
+         x.lim = c(0.03,0.13),
+         x.label ='BAC', y.label = 'Recidivism' ,title='RDD p=1')  
+```
+
+
+```{r}
+
+rdplot(y = dui_filtered$recidivism, x = dui_filtered$BAC, c = 0.08, h=0.05, p=2,
+         covs = dui_filtered[c("white", "male", "aged", "acc")],
+         kernel = "uniform", ci=95, support = c(0.03, 0.2), shade = TRUE,
+       x.lim = c(0.03,0.13),
+        x.label ='BAC', y.label = 'Recidivism' ,title='RDD p=2', )  
+```
+
+
+6. Calcule el pvalor del efecto del DUI usando inferencia randomizada
+
+```{r}
+rdrandinf(Y = dui_filtered$recidivism, R =  dui_filtered$BAC, cutoff = 0.08, p=2, 
+          kernel = "uniform",statistic = "diffmeans", wl = 0.04 , wr = 0.12 ,
+          covariates = dui_filtered[c("white", "male", "aged", "acc")],
+          reps=9000, seed=1234)
+```
+
+7. Realice un experimento placebo a 0.04, con ancho de banda .04
+
+```{r}
+rdplot(y = dui_filtered$recidivism, x = dui_filtered$BAC, c = 0.04, h=0.04, p=2,
+         covs = dui_filtered[c("white", "male", "aged", "acc")],
+         kernel = "uniform", ci=95, support = c(0.03, 0.2), shade = TRUE,
+       x.lim = c(0.03,0.08), y.lim = c(.0,0.3),
+        x.label ='BAC', y.label = 'Recidivism' ,title='Placebo experiment with cutoff 0.04 and bandwith 0.04 - p=2')  
+
+```
+
+```{r}
+rdplot(y = dui_filtered$recidivism, x = dui_filtered$BAC, c = 0.04, h=0.04, p=1,
+         covs = dui_filtered[c("white", "male", "aged", "acc")],
+         kernel = "uniform", ci=95, support = c(0.03, 0.2), shade = TRUE,
+       x.lim = c(0.03,0.08), y.lim = c(.0,0.3),
+        x.label ='BAC', y.label = 'Recidivism' ,title='Placebo experiment with cutoff 0.04 and bandwith 0.04 - p=1')  
+
+```
+
+
+
